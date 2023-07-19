@@ -1,0 +1,3 @@
+This is my text file created for the VIM exercise on Frontend Masters. I chose to use VSCode for as my editor instead of Vim.
+
+File has been created, branch created and pushed from VSCode.
