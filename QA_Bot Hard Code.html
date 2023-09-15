@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q&A Bot</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+        /* Your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            padding: 20px;
+        }
+
+        .chat-container {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+
+            }
+
+        .user-input-container {
+            display: none;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .user-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .submit-btn {
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            color: #fff;
+        }
+
+        .clear-btn {
+            margin-top: 5px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            color: #fff;
+        }
+
+        .robot-img-container {
+            align-self: flex-start;
+
+        }
+
+        img#robot-img {
+            float-right;
+            cursor: pointer;
+            width: 5%;
+            height: 15%;
+        }
+
+        /* Chat message styles */
+        .user-message {
+            background-color: #3498db;
+            color: #fff;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            clear: both;
+            max-width: 80%;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #e1e1e1;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            clear: both;
+            max-width: 80%;
+            align-self: flex-start;
+
+        }
+
+        /* Additional styles for the QA confirmation section */
+        #qa-container {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #confirm-text {
+            margin-bottom: 10px;
+        }
+
+        #yes-btn,
+        #no-btn {
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #fff;
+        }
+    </style>
+</head>
+
+    <body>
+        <div class="container initial" id="main-container" style="max-width:50%; margin-left:25px;">
+            <div class="container qabotContainer p-1">
+                <div class="content-container">
+
+                    <!-- Robot image in the far-left corner -->
+                    <div class="robot-img-container mb-2 p-1">
+                        <img src="http://127.0.0.1/wordpress/wp-content/uploads/2023/08/robot.jpg" alt="Robot" id="robot-img">  Click me for help!
+                    </div>
+
+                    <!-- Placeholder for the chat box -->
+                    <div class="chat-container p-1" id="chat-container" style="max-width:50%"></div>
+
+                    <!-- User input section (hidden initially) -->
+                    <div class="input-qa-container p-1" id="input-qa-container" style="display:none;">
+                        <div class="user-input-container mb-2 p-1" id="user-input-container" style="display:hide;">
+                            <textarea id="user-input" class="user-input m-2 p-1" rows="4" placeholder="Ask a question..."></textarea><br>
+                            <button id="submit-btn" class="submit-btn p-1">Submit</button>
+                            <button id="clear-btn" class="clear-btn p-1">Clear</button>
+                        </div>
+
+                        <!-- QA confirmation section (hidden initially) -->
+                        <div id="qa-container" style="display: none !important;">
+                            <div id="confirm-text" style="display: none !important;"></div>
+                            <button id="yes-btn" style="display: none !important;">Yes</button>
+                            <button id="no-btn" style="display: none !important;">No</button>
+                            <div id="response" style="display: none;"></div>
+                        </div>
+                    </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+        <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const userQuestionInput = document.getElementById("user-input");
+    const submitBtn = document.getElementById("submit-btn");
+    const chatContainer = document.getElementById("chat-container");
+    const robotImg = document.getElementById("robot-img");
+    const inputQAContainer = document.getElementById("input-qa-container");
+    const userInputContainer = document.getElementById("user-input-container");
+    const qaContainer = document.getElementById("qa-container");
+    const confirmText = document.getElementById("confirm-text");
+    const yesBtn = document.getElementById("yes-btn");
+    const noBtn = document.getElementById("no-btn");
+    const response = document.getElementById("response");
+    const clearBtn = document.getElementById("clear-btn");
+
+    let botOpened = false;
+    let currentQuestion = null;
+    let attempts = 0;
+
+    // Function to create and append the chat box
+    function createChatBox() {
+        const chatBox = document.createElement("div");
+        chatBox.className = "chat-box p-1";
+        chatContainer.appendChild(chatBox);
+        return chatBox;
+    }
+
+let chatBox = createChatBox();
+
+    const qaPairs = [{
+        question: "How do I search for a Resident?",
+        keywords: ["search", "find", "search for", "inmate id", "resident number", "find resident", "find inmate"],
+        answer: "You may use the Residents Name or Inmate ID Number to locate a resident. To use the Inmate ID Number you must enter the following format into the search field inmate_id_number:01234567, preceding 00's are not required. Additionally you may search by a Full Name or Last Name."
+    },
+    {
+        question: "Why am I getting an error when I try to save the updates to a Residents file?",
+        keywords: ["error", "error message", "not saving", "file error", "resident error", "error when saving", "resident file"],
+        answer: "Receiving an error while trying to save a record indicates that mandatory information has not been entered. All mandatory fields are marked with an asterisk (*)."
+    },
+    {
+        question: "Why would a Resident not able to see or apply for jobs?",
+        keywords: ["No jobs", "Resident can't see jobs", "no visible jobs", "can't see jobs", "can not see jobs", "not able to see jobs", "see jobs", "view jobs"],
+        answer: "For a Resident to view jobs there must be an assigned Job Pool. To assign a Job Pool to a Resident, go to the Resident's file and scroll down to the Job Pool section. Select the Job Pool from the drop down menu then save the record. For information on blocking available jobs. Please search for blocking the view of available jobs."
+    },
+    {
+        question: "How can I tell if the Residents account has been approved?",
+        keywords: ["Active file", "Make Active", "active", "resident status", "account status", "record status", "what status", "status"],
+        answer: "If the Resident has been approved the account status will be set to 'Active'. Locate the Resident file, the status will be displayed on the far right side of the screen. The status will show  either Active and Public or Disabled (Inactive) and Public. The Public status is required for employers to be able to view any applications the resident has submitted."
+    },
+    {
+        question: "The Resident has completed the registration process and is not in the system? Why?",
+        keywords: ["Registration", "Missing Account", "Login Problem", "no account", "not in the system", "not found", "can't find", "registered", "resident account", "resident file", "login", "access account", "missing"],
+        answer: "Reasons for a missing account: Registration Failure, Incorrect Username, Incorrect Credentials. 1) All mandatory fields must be completed before a registration is successfully completed. If there are uncompleted or incorrect fields the registration for will remain visible for correction to be made. Once a Resident has successfully completed their registration they will be forwarded to their Resident Portal. 2) If a Resident failed to use their KDOC ID Number as their username their account may have been deleted. If this is the case they will need to re-enter their information into the system, this time using their KDOC ID# as their username. 3) To access the system the Resident needs to login with the username and pin they registered with. Their password can be updated from the Administration screen by locating the resident, clicking on edit, then click on view linked user account (located on the far right), on the next screen you'll need to scroll down to Set New Password. If the password is rated as 'Very Weak' check the 'Confirm use of weak password' and save the record."
+    },
+    {
+        question: "Does a resident have to be approved to log into their account?",
+        keywords: ["approved", "login"],
+        answer: "A resident does not have to be approved prior to accessing their account. However they will not be able to view or apply for jobs until they have been assigned a Job Pool. "
+    },
+    {
+        question: "How can I block a Residents view of available jobs?",
+        keywords: ["block", "Stop Application", "Not want Resident to view jobs", "restrict Resident from applying for jobs", "job pool", "stop", "dr", "hold", "disciplinary", "blocking jobs", "blocking available jobs", "blocking"],
+        answer: "The best way to achieve this is to assign the Resident to Pool 4: Not Eligible: Medical Lay-In / Disciplinary Lay-In. Currently this is the only Job Pool that will prevent a Resident from viewing or applying for jobs. This is done by restricting Employers from the ability to post to this Job Pool. "
+    },
+    {
+        question: " Is a Resident able to apply for the same job multiple times?",
+        keywords: ["Multiple Applications", "Apply to same job", "access to jobs", "multiple"],
+        answer: "Residents are only able to apply for a job posting once. If they have already submitted an application for that posting, the 'Apply' button will not be available and a message will be displayed indicating that they have already applied for that job posting."
+    },
+    {
+        question: "Are residents able to update their information after they have registered? ",
+        keywords: ["Updating Resume", "Resident updating", "Resident saving updates", "resume", "update resume", "update account", "resident update", "update"],
+        answer: "From the Resident Portal under 'My Resume' residents are able to make limited changes to the information on record. Examples are adding additional completed classes, new skills, and KDOC employment. They also have the ability to change their account password."
+    },
+    {
+        question: "Can I add document to a Residents file? ",
+        keywords: ["pdf", "upload", "attach documents", "documents", "add to", "add a"],
+        answer: "To upload documents to a Residents account you will need to locate and select the Residents record, then scroll to the PDF Documents section of the Residents file. You will be able to add any documents formatted as either a .pdf, .jpeg, .gif, or .png,  Multiple files may be uploaded simultaneously. To delete a document click on the trash can located to the right of the document."
+    },
+    {
+        question: "How do I enter a new Resident into the system?",
+        keywords: ["Setup New Resident", "Enter Resident", "Resident needs help registering", "new resident", "create new", "add new", "add"],
+        answer: "Policy is to have the Resident access the system on their tablet and enter their own information. If this is not possible you may enter the Resident's information by clicking on the 'Add Resident' button. You will be required to enter the Inmate ID Number and a 4 digit pin number for future access. You will then be directed to the Resident's file where you will be required to enter the remaining information. This method will also require the completion of all mandatory fields under the Unit Teams section of the record."
+    },
+    {
+        question: "How do I change a Residents password? ",
+        keywords: ["Change Resident Password", "Reset Resident Password", "reset", "password"],
+        answer: "Locate the Resident file and click on edit from the summary report page. Inside the Residents file click on the 'view linked user account' from the far right. Scroll down to 'Set New Password'. If the password is rated as 'Very Weak' check the 'Confirm use of weak password' and save the record. Residents have the ability to change their passwords by logging into their Resident Portal."
+    },
+    {
+        question: "The Resident did not use their Inmate ID# to register with. Can the username be changed to their Inmate ID#? ",
+        keywords: ["Incorrect Username", "ID not username", "change username", "username"],
+        answer: "Once a Resident has registered with a Login ID it cannot be changed. If the Resident has registered with a Login ID other than their Inmate ID# you will need to delete their current account and they will need to re-register with their Inmate ID# as their username."
+    },
+    {
+        question: "Is there a way that I can select only the unapproved Residents? ",
+        keywords: ["Unapproved", "Not approved", "pending", "select", "see"],
+        answer: "To select a specific group of Residents click on either the 'Active' or 'Inactive' link near the top left side of the page. This will display only the Residents that have been approved or not approved. "
+    },
+    {
+        question: "How can I tell who made changes to a Residents file? ",
+        keywords: ["Changes Made to Resident", "Who made changes", "Author of changes", "changes"],
+        answer: "For a report on what and who made changes to a residents account please contact KCI Coding at 'mark.daugherty@ks.gov' to obtain the information. "
+    },
+    {
+        question: "One of the Private Industry Employers is needing assistance with their account. Who should they contact? ",
+        keywords: ["PI Partner", "employer", "employer account", "PI", "employers", "help"],
+        answer: "Please have them contact KCI Coding at mark.daugherty@ks.gov for any assistance. "
+    },
+    {
+        question: "How are Residents able to view and apply for jobs? ",
+        keywords: ["view jobs", "apply to job", "new application", "employer know of application", "view", "all",],
+        answer: "Job Pools are created by criteria based on security level, job location, and type of employment. Residents are only able to view and apply for jobs that are posted to their assigned Job Pool."
+    },
+    {
+        question: "What are the Application Statuses and how are Residents notified of the status of their applications?",
+        keywords: ["application status", "hired", "rejected application", "denied application"],
+        answer: "All new applications are defaulted as New. Once an application is reviewed by the Employer the status changes to Read. The employer then has the opportunity to either Accept or Reject the resident’s application. Residents will need to periodically check their account to view the status of their applications. Employers are instructed to contact Unit Team for interviewing or hiring of Residents. "
+    },
+    {
+        question: "How do I change my password? ",
+        keywords: ["Admin Password", "Change Admin Password", "Update Admin Password", "my password", "my"],
+        answer: "As an Admin User you will need to log into your account then from the Administration drop-down menu, located in the top right corner of the page, select 'Password Reset'. The form pre-populates your General Account Information then below that you will need to enter your new password and confirm the new password. Once you have completed the form click on the 'Update Profile' button. "
+    },
+    {
+        question: "Is there a user manual for the system? ",
+        keywords: ["User Manual", "User Instructions", "System Help"],
+        answer: " For additional help and visual aids a UTM User Manual is located at the top right side of your facilities page. "
+    },
+    {
+        question: "How does a Resident add previous work experience to their resume? ",
+        keywords: ["Previous Jobs", "Previous Experience", "Work History", "previous"],
+        answer: "All previous employment and education, prior to incarceration, should have been entered at the time of registration. If the Resident failed to enter this information they will need to contact Unit Team to have it added to their resume. "
+    },
+    {
+        question: "Are emails sent from the program? ",
+        keywords: ["email"],
+        answer: "As a security feature email capabilities has been disabled. Employers are instructed to contact Unit Team to discuss an application or to schedule an interview with a Resident. "
+    },
+    {
+        question: "Can a Resident view community job posting? ",
+        keywords: ["Community Jobs", "Workforce Jobs", "Post-Release Jobs", "outside jobs", "community"],
+        answer: "The KCI PI Jobs program is only for Private Industry employment offered at KDOC facilities. No outside community is employment is available from this system."
+    },
+    {
+        question: "How do I return to my facilities home page? ",
+        keywords: ["home page", "facility page", "facility report", "page"],
+        answer: "Pressing the Refresh Report button will return you to your facility home page at any time."
+    }
+        // Add more question-answer pairs as needed
+    ];
+
+    function findMatchingAnswer(userQuestion) {
+        const userKeywords = userQuestion.toLowerCase().split(" ");
+        for (const qaPair of qaPairs) {
+            if (qaPair.keywords.some(keyword => userKeywords.includes(keyword))) {
+                currentQuestion = qaPair; // Store the current question for confirmation
+                return qaPair.answer;
+            }
+        }
+        return "I'm sorry, I couldn't find an answer for that. Please contact KCI Coding at mark.daugherty@ks.gov for further assistance";
+    }
+    function displayAnswer(userQuestion, botAnswer) {
+        const userMessageDiv = document.createElement("div");
+        userMessageDiv.className = "user-message mb-2 p-1";
+        userMessageDiv.textContent = userQuestion;
+
+        const botMessageDiv = document.createElement("div");
+        botMessageDiv.className = "bot-message mb-2 p-1";
+        botMessageDiv.textContent = botAnswer;
+
+        chatBox.appendChild(userMessageDiv);
+        chatBox.appendChild(botMessageDiv);
+
+        // Scroll to the bottom of the chat box
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Clear the input field
+        userQuestionInput.value = "";
+
+        // Show the QA confirmation section
+        confirmText.textContent = "Did this answer your question?";
+    }
+
+
+    // Function to handle user confirmation
+    function handleUserConfirmation(isYes) {
+        if (isYes) {
+            displayMessageAndReload()
+        } else {
+            const nextQuestion = currentQuestion;
+            currentQuestion = null; // Reset the current question
+            if (nextQuestion) {
+                // Display the next possible match
+                const botAnswer = nextQuestion.answer;
+                displayAnswer(nextQuestion.question, botAnswer);
+            } else {
+                // No more matching questions, end the conversation
+                response.textContent = "I'm sorry, I couldn't find an answer. Please contact KCI Coding at mark.daugherty@ks.gov for further assistance."();
+            }
+        }
+
+        // Hide the yes and no buttons
+        yesBtn.style.display = "none";
+        noBtn.style.display = "none";
+        // Hide the confirmation text
+        confirmText.style.display = "none";
+        response.style.display = "none";
+    }
+
+
+    // Function to display the initial message and show the user input when the robot image is clicked
+    function initiateConversation() {
+        chatBox.innerHTML = ""; // Clear the chat box
+        const initialMessage = "How can I help you?";
+        displayAnswer("Robot", initialMessage);
+        inputQAContainer.style.display = "block";
+        userInputContainer.style.display = "block";
+        botOpened = true;
+    }
+
+
+    // Event listener for the robot image click
+    robotImg.addEventListener("click", initiateConversation);
+    robotImg.addEventListener("click", function () {
+        const mainContainer = document.getElementById("main-container");
+        mainContainer.classList.remove("initial"); // Remove the initial class
+        mainContainer.style.width = "100%";
+        
+    });
+
+    // Listen for user confirmation
+    yesBtn.addEventListener("click", function () {
+        displayMessageAndReload()
+
+    });
+
+    // Function to display the message, clear it after 3 seconds, and reload the page
+    function displayMessageAndReload() {
+        chatContainer.innerHTML = "Awesome! I'm glad I could help. Goodbye!";
+
+        // Clear the message after 3 seconds
+        setTimeout(function () {
+            // Clear the message (if it's an alert, there's no need to clear it explicitly)
+            // Reload the page
+            location.reload();
+        }, 1500); // 3000 milliseconds (3 seconds) delay
+    }
+
+    noBtn.addEventListener("click", function () {
+        if (!currentQuestion) {
+            // If 'No' button is clicked, and no other answer is available, show the default response
+            displayAnswer("Robot", "I'm sorry, I couldn't find an answer for that. Please contact KCI Coding at mark.daugherty@ks.gov for further assistance.");
+            attempts = 0; // Reset attempts
+            qaContainer.style.display = "none"; // Hide QA confirmation section
+            clearBtn.style.display = "block"; // Show clear button
+
+            // Save the unanswered question
+            if (userQuestionInput.value) {
+                handleNoAnswer(userQuestionInput.value, "I'm sorry, I couldn't find an answer. Please try again.");
+            }
+        } else {
+            // Otherwise, search for the next possible match
+            displayAnswer("Robot", "I'm sorry, I couldn't find an answer for that. Please contact KCI Coding at mark.daugherty@ks.gov for further assistance.");
+            qaContainer.style.display = "none"; // Hide QA confirmation section
+            clearBtn.style.display = "block"; // Show clear button
+        }
+    });
+
+    clearBtn.addEventListener("click", function () {
+        chatContainer.style.display = "none";
+        userQuestionInput.style.display = "none";
+        userInputContainer.style.display = "none";
+        submitBtn.style.display = "none";
+        clearBtn.style.display = "none";
+        location.reload();
+
+    });
+
+    submitBtn.addEventListener("click", function () {
+        const userQuestion = userQuestionInput.value.toLowerCase(); // Convert input to lowercase
+        const botAnswer = findMatchingAnswer(userQuestion);
+        displayAnswer(userQuestion, botAnswer);
+        qaContainer.style.display = "inline-block";
+        confirmText.style.display = "block";
+        yesBtn.style.display = "inline-block";
+        noBtn.style.display = "inline-block";
+        response.style.display = "block";
+
+        // Display QA confirmation section if a valid question was asked
+        if (currentQuestion) {
+            confirmText.textContent = "Did this answer your question?";
+            qaContainer.style.display = "inline-block";
+        } else {
+            qaContainer.style.display = "none"; // Hide QA confirmation
+        }
+    });
+
+    userQuestionInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            const userQuestion = userQuestionInput.value.toLowerCase(); // Convert input to lowercase
+            const botAnswer = findMatchingAnswer(userQuestion);
+            displayAnswer(userQuestion, botAnswer);
+            qaContainer.style.display = "inline-block";
+            confirmText.style.display = "block";
+            yesBtn.style.display = "inline-block";
+            noBtn.style.display = "inline-block";
+            response.style.display = "block";
+
+            // Display QA confirmation section if a valid question was asked
+            if (currentQuestion) {
+                confirmText.textContent = "Did this answer your question?";
+                qaContainer.style.display = "inline-block";
+            } else {
+                qaContainer.style.display = "none"; // Hide QA confirmation
+            }
+        }
+    });
+});
+        </script>
+</body>
+
+</html>
